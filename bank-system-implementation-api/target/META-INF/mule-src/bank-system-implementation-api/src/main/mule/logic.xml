@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="7f057082-aa1f-4e3b-89fa-9f7995009590" file="Database\database.yaml" />
+	<flow name="createAccountLogicFlow" doc:id="d9628ae0-88c9-4e3d-9dd3-00d56f1c820a" >
+		<logger level="INFO" doc:name="start Logger " doc:id="6b332759-6f78-4393-8dc7-ca2284f07a07" message='#["---------------Create Account Flow Started --------------"]'/>
+		<set-variable value="#[payload.mAmount]" doc:name="Amount" doc:id="8e14fd0d-daff-44da-b5fc-41bdabd8737a" variableName="Amount"/>
+		<ee:transform doc:name="Incoming payload" doc:id="d80d12d2-139b-442d-87dd-5f75f4b43e8d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="b314870f-3447-4436-9e77-f419093f7c26" >
+			<when expression="#[payload.fname == '' or payload.lname == '' or payload.mail == '' or payload.mAmount == '' or payload.accountType.typeOfAccount == '']">
+				<ee:transform doc:name="Transform Message" doc:id="1bdbd78c-cfc5-470e-b93c-381e2c591fbc" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Feilds cann't be empty"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="d877624c-a92a-4d2e-93ce-1c3a5490c921" >
+					<when expression="#[vars.Amount &lt; 500]">
+						<raise-error doc:name="Raise error" doc:id="08097b7b-2cc6-4e9d-af50-28b55929d861" type="BANK:MIN" description="Minimum amount of 500 is required to open an account "/>
+
+					</when>
+					<otherwise >
+						<set-variable value="#[ceil(random()* 100000)]" doc:name="accountNumber" doc:id="2be37893-71d5-4688-bcb4-79a25cd294da" variableName="accountNumber"/>
+						<db:insert doc:name="Insert data to Accounts" doc:id="47b04d5e-8a5f-4677-b825-853a8dfb5be5" config-ref="Database_Config">
+							<db:sql ><![CDATA[insert into accounts(accountNumber, fname, lname, mail, accountType, balance) values(:accountNumber, :fname, :lname, :mail, :type, :balance)]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+	'accountNumber': vars.accountNumber,
+	'fname':payload.fname,
+	'lname': payload.lname,
+	'mail': payload.mail,
+	'balance': payload.mAmount,
+	'type': payload.accountType.typeOfAccount
+}]]]></db:input-parameters>
+						</db:insert>
+						<ee:transform doc:name="Transform Message" doc:id="f2d71e07-9739-48b8-8e48-8d9c23b1f461" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Account created Successfully " ++ vars.accountNumber as String
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="31a51299-15b4-4566-bfd3-717c8f827548" message="#[payload]"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="29d20cd5-b311-4e64-b4ba-3d8fc059c648" type="BANK:MIN">
+				<ee:transform doc:name="Transform Message" doc:id="521ea5dd-c8c7-4cc1-bbfd-0d0f75cac5fb" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	
+</flow>
+	<flow name="checkBalancelogicFlow" doc:id="14662cb5-8f46-43ff-bd08-a4c6841216a5" >
+		<logger level="INFO" doc:name="start Logger" doc:id="46f0672d-592a-4b56-ad3e-5941cb8e5603" message='#["---------- started check balance flow ----------------"]'/>
+		<set-variable value="#[attributes.queryParams.accountNumber]" doc:name="accountNumber" doc:id="72c62b8b-3a83-4c27-a072-4bfba1fe736e" variableName="accountNumber" />
+		<choice doc:name="Choice" doc:id="d47d6932-f777-408a-9c24-2fe65691d9c7" >
+			<when expression='#[vars.accountNumber==""]'>
+				<raise-error doc:name="Raise error" doc:id="cbacc431-9185-4643-8282-c8615004b843" type="ACCOUNTNUMBER:EMPTY" description="Account number must not be empty"/>
+			</when>
+			<otherwise >
+				<db:select doc:name="Select Balance" doc:id="40e1f4fb-da3c-414e-8d07-af5d33a9d4bc" config-ref="Database_Config">
+			<db:sql><![CDATA[select balance from accounts where accountNumber = :accountNumber]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	"accountNumber": vars.accountNumber
+}]]]></db:input-parameters>
+		</db:select>
+				<ee:transform doc:name="Transform Message" doc:id="0189859c-5b5a-4e3c-812c-3d5886cc1c8a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="3dd6487c-de64-43c9-acae-1e4ef017e1b3" message="#[payload]"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="474f7781-68d7-4ecb-a83a-ee14b6170b23" type="ACCOUNTNUMBER:EMPTY">
+				<ee:transform doc:name="Transform Message" doc:id="0af2adf6-2430-4ee9-b66a-d0e9bfa3613a" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	meassge: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	
+</flow>
+	<flow name="DepositLogicFlow" doc:id="b8efed7f-c906-4161-b69c-80298709ae74" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="4cd4e947-d8fd-4d59-814f-5af46493c74a" message='#["-------------Deposit Flow is started ------------"]'/>
+		<set-variable value="#[payload.amount]" doc:name="amount" doc:id="238fabd8-b97c-4cdd-a737-a47cb090dd6f" variableName="amount"/>
+		<set-variable value="#[attributes.queryParams.accountNumber]" doc:name="accountNumber" doc:id="fbc97052-5ff3-42a3-a37b-27416d10df35" variableName="accountNumber"/>
+		<flow-ref doc:name="call checkBalancelogicFlow" doc:id="d320757b-8a43-4541-9822-e4b47eb4b2d2" name="checkBalancelogicFlow"/>
+		<set-variable value="#[payload.balance]" doc:name="balance" doc:id="4d402d32-27d4-4adc-b29e-f7178d428f3f" variableName="balance"/>
+		<db:update doc:name="Update" doc:id="0ace1d55-49f0-49b1-8c52-333a2126d0a1" config-ref="Database_Config">
+			<db:sql ><![CDATA[UPDATE accounts set balance = :balance where accountNumber = :accountNumber]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	accountNumber : vars.accountNumber,
+	balance : vars.amount + vars.balance[0]
+	}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="39e7d02e-56ed-4f24-b035-259a02c27f23" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Amount Deposited Successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="e02b6b02-c5b6-4345-8d83-13a56053a58e" message='#["--------------End deposit flow -------------------"]'/>
+	</flow>
+	<flow name="WithdrawLogicFlow" doc:id="818eeeea-80a6-45b6-8761-8cdc6663f9ae" >
+		<logger level="INFO" doc:name="Start Logger" doc:id="979d042d-ab27-45c3-9bf8-db3a81d1e6cc" message='#["------------Withdraw flow is started -----------"]'/>
+		<set-variable value="#[payload.amount]" doc:name="amount" doc:id="c4297484-0227-46bf-b2c3-49110bc4f9f9" variableName="amount"/>
+		<set-variable value="#[attributes.queryParams.accountNumber]" doc:name="accountNumber" doc:id="09227362-8939-49c8-93dc-e33a4e16f7aa" variableName="accountNumber"/>
+		<flow-ref doc:name="call CheckbalanceLogical Flow" doc:id="6ea5ccb7-0cce-4f70-9c08-50e931ed4422" name="checkBalancelogicFlow"/>
+		<set-variable value="#[payload.balance]" doc:name="balance" doc:id="baa0268f-2397-4add-ae4d-a00d7778fe35" variableName="balance"/>
+		<choice doc:name="Choice" doc:id="890512dc-26b0-446d-858e-3b23ebecaec0" >
+			<when expression="#[vars.amount &gt; vars.balance[0]]">
+				<ee:transform doc:name="Transform Message" doc:id="0a6caa03-9d1e-491b-b5c4-af6a0143a1a7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Withdraw is not possible. insufficient balance"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<db:update doc:name="Update" doc:id="2e1bfa5a-a086-405f-b761-8f2cb9dd75e4" config-ref="Database_Config">
+					<db:sql ><![CDATA[UPDATE accounts set balance = :balance where accountNumber = :accountNumber]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	accountNumber : vars.accountNumber,
+	balance : vars.balance[0] - vars.amount
+	}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="Transform Message" doc:id="ec0bc733-381c-438e-99e3-3b38dc4cf9b2" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Amount Withdrawn successfiully"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="606540d0-8b3d-4a18-9182-6403f4ece7f4" message='#["----------- End of the withdrawn flow----------"]'/>
+	</flow>
+</mule>

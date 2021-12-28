@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="createAccountendPointFlow" doc:id="f24111b4-92aa-496d-94a1-e69171cb81b3" >
+		<http:listener doc:name="Listener" doc:id="62a77915-ec39-4c3f-a4e4-15e8636fccf2" path="/createAccount" outputMimeType="application/json" config-ref="HTTP_Listener_config"/>
+		<flow-ref doc:name="calling Creat Account Logic Flow" doc:id="3e91987d-3b33-49c9-9bb8-27541c192d96" name="createAccountLogicFlow"/>
+	</flow>
+	<flow name="checkBalanceendpointsFlow" doc:id="8e3ddd7c-e365-427f-8494-3945a26b353e" >
+		<http:listener doc:name="Listener" doc:id="51817458-cedf-4fc6-938c-26cc8cf1025e" path="/checkBalance" config-ref="HTTP_Listener_config"/>
+		<flow-ref doc:name="call checkBalancelogicFlow" doc:id="de42604d-02a1-409f-b215-0e5ceabc32d1" name="checkBalancelogicFlow"/>
+	</flow>
+	<flow name="Withdrawendpoint" doc:id="f81852a2-2ae1-4fb0-9c24-d8ddfb50811c" >
+		<http:listener doc:name="Listener" doc:id="9fe14eda-1028-4f2c-883f-127cac5d424c" config-ref="HTTP_Listener_config" path="/withdraw" outputMimeType="application/json"/>
+		<flow-ref doc:name="call withdraw logic Flow" doc:id="a4710989-d747-422a-ac7a-edcad2c1aaf3" name="WithdrawLogicFlow"/>
+	</flow>
+	<flow name="depositEndpoint" doc:id="45d50317-62b8-4627-9f92-f24e2012c9a0" >
+		<http:listener doc:name="Listener" doc:id="5c7908c9-d5b5-453d-9cd6-cca16820fac7" config-ref="HTTP_Listener_config" path="/deposit" outputMimeType="application/json"/>
+		<flow-ref doc:name="call depost logic flow" doc:id="54159947-e4ab-410c-ba6d-90c7197cf47c" name="DepositLogicFlow"/>
+	</flow>
+</mule>

@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_818eeeea_80a6_45b6_8761_8cdc6663f9ae_Output_Variables_accountNumber = Any
+
