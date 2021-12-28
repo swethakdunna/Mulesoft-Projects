@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:java="http://www.mulesoft.org/schema/mule/java" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="02248d3b-6de3-4f95-a1fb-93e1aa587dcd" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="invokestaticFlow" doc:id="6f40f122-7e77-4d50-8831-34288bc575b6" >
+		<http:listener doc:name="Listener" doc:id="33b065a4-1628-4dc1-bb4c-5ebf84ea4b44" config-ref="HTTP_Listener_config" path="/endpoint"/>
+		<java:invoke-static method="getMessage(java.lang.String,java.lang.String)" doc:name="Invoke static" doc:id="ae6b7eeb-4c67-400f-a5e9-1d508f1b2753" class="com.mss.StockQuotation">
+			<java:args ><![CDATA[#[{
+	"name":attributes.queryParams.name,
+	"country": attributes.queryParams.country
+}]]]></java:args>
+		</java:invoke-static>
+		<logger level="INFO" doc:name="Logger" doc:id="18683a42-2f4b-4131-b7b2-54d77ba11b45" message="#[payload]"/>
+	</flow>
+	<flow name="invokestaticFlow1" doc:id="9db1615e-3c14-4243-9d8f-e304b15d9994" >
+		<http:listener doc:name="Listener" doc:id="6e766dc0-c896-489f-9d93-c03618d81e0e" config-ref="HTTP_Listener_config" path="/endpoint1/{price}"/>
+		<java:new constructor="StockQuotation()" doc:name="New" doc:id="29e0756f-af4d-4825-9b04-5af58f7396e1" class="com.mss.StockQuotation" target="price"/>
+		<java:invoke method="getQuotation(java.lang.String)" doc:name="Invoke" doc:id="81aa84db-0f99-4aaf-ad53-9937fc26ba0a" instance="#[vars.price]" class="com.mss.StockQuotation">
+			<java:args ><![CDATA[#[{
+	price: attributes.uriParams.price
+}]]]></java:args>
+		</java:invoke>
+	</flow>
+</mule>
